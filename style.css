@@ -266,7 +266,20 @@ code {
   margin-top: 1rem;
 }
 .contact-form input,
-.contact-form select,
+.contact-form select {
+  background: #0b1d33;
+  color: #eaf4ff;
+  border: 1px solid rgba(101, 184, 255, 0.28);
+}
+
+.contact-form option {
+  background: #ffffff;
+  color: #111827;
+}
+
+.contact-form option[value=""] {
+  color: #6b7280;
+}
 .contact-form textarea {
   width: 100%;
   background: rgba(255,255,255,0.03);
