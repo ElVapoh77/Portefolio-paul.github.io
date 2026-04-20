@@ -320,10 +320,13 @@ code {
 }
 
 .e5-table .left-header {
-  min-width: 340px;
-  text-align: left;
+  min-width: 260px;
+  width: 260px;
+  max-width: 260px;
 }
 
 .e5-table .period-header {
-  min-width: 140px;
+  min-width: 180px;
+  width: 180px;
+  max-width: 180px;
 }
