@@ -461,99 +461,195 @@
     });
   </script>
   <script>
-  const energyLayer = document.getElementById("energyLayer");
-  const energyPaths = document.getElementById("energyPaths");
+(() => {
+  const svg = document.getElementById("energyLayer");
+  const group = document.getElementById("energyGroup");
 
-  const GRID_SIZE = 42; // Doit correspondre au background-size de la grille
+  const GRID = 42;               // même valeur que background-size de la grille
+  const SPAWN_MIN = 650;         // plus bas = plus intense
+  const SPAWN_MAX = 1300;
+  const MAX_BRANCHES = 3;
 
-  function resizeEnergyLayer() {
-    energyLayer.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
+  function resize() {
+    svg.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
   }
 
-  function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
+  function rand(min, max) {
+    return Math.random() * (max - min) + min;
   }
 
-  function randomGridCoord(max) {
-    const cells = Math.floor(max / GRID_SIZE);
-    return Math.round(Math.random() * cells) * GRID_SIZE;
+  function randInt(min, max) {
+    return Math.floor(rand(min, max + 1));
   }
 
-  function randomEdgePoint(w, h) {
-    const edge = Math.floor(Math.random() * 4);
-
-    if (edge === 0) return { x: 0, y: randomGridCoord(h) };      // gauche
-    if (edge === 1) return { x: w, y: randomGridCoord(h) };      // droite
-    if (edge === 2) return { x: randomGridCoord(w), y: 0 };      // haut
-    return { x: randomGridCoord(w), y: h };                      // bas
+  function chance(value) {
+    return Math.random() < value;
   }
 
-  function buildElectricPath() {
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function snap(v) {
+    return Math.round(v / GRID) * GRID;
+  }
+
+  function edgePoint(w, h) {
+    const edge = randInt(0, 3);
+    if (edge === 0) return { x: 0, y: snap(rand(0, h)) };
+    if (edge === 1) return { x: w, y: snap(rand(0, h)) };
+    if (edge === 2) return { x: snap(rand(0, w)), y: 0 };
+    return { x: snap(rand(0, w)), y: h };
+  }
+
+  function jitteredStep(current, axis, w, h) {
+    const steps = randInt(2, 7) * GRID;
+    const dir = chance(0.5) ? 1 : -1;
+
+    if (axis === "x") {
+      return {
+        x: clamp(current.x + steps * dir, 0, w),
+        y: current.y
+      };
+    }
+    return {
+      x: current.x,
+      y: clamp(current.y + steps * dir, 0, h)
+    };
+  }
+
+  function buildMainPath() {
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    let current = randomEdgePoint(w, h);
-    const points = [current];
-
-    let horizontal = Math.random() > 0.5;
-    const segments = Math.floor(Math.random() * 4) + 5; // entre 5 et 8 segments
+    let current = edgePoint(w, h);
+    const points = [{ ...current }];
+    let axis = chance(0.5) ? "x" : "y";
+    const segments = randInt(6, 11);
 
     for (let i = 0; i < segments; i++) {
-      if (horizontal) {
-        let nextX = randomGridCoord(w);
-        if (nextX === current.x) {
-          nextX = clamp(current.x + (Math.random() > 0.5 ? GRID_SIZE * 2 : -GRID_SIZE * 2), 0, w);
-        }
-        current = { x: nextX, y: current.y };
-      } else {
-        let nextY = randomGridCoord(h);
-        if (nextY === current.y) {
-          nextY = clamp(current.y + (Math.random() > 0.5 ? GRID_SIZE * 2 : -GRID_SIZE * 2), 0, h);
-        }
-        current = { x: current.x, y: nextY };
+      let next = jitteredStep(current, axis, w, h);
+
+      if (next.x === current.x && next.y === current.y) {
+        axis = axis === "x" ? "y" : "x";
+        next = jitteredStep(current, axis, w, h);
       }
 
-      points.push(current);
-      horizontal = !horizontal;
+      if (chance(0.22)) {
+        // petit zigzag supplémentaire pour casser la régularité
+        const perp = axis === "x" ? "y" : "x";
+        const bend = jitteredStep(next, perp, w, h);
+        points.push({ ...bend });
+        current = bend;
+      } else {
+        current = next;
+      }
+
+      points.push({ ...current });
+      axis = axis === "x" ? "y" : "x";
     }
 
-    return points;
+    return points.map(p => ({ x: snap(p.x), y: snap(p.y) }));
   }
 
-  function pointsToPath(points) {
+  function pathToD(points) {
     return points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
   }
 
-  function createPath(d, className, duration) {
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", d);
-    path.setAttribute("class", className);
-    path.style.setProperty("--dur", `${duration}s`);
-    return path;
+  function createSvgElement(name, attrs = {}) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    return el;
   }
 
-  function spawnEnergy() {
-    const points = buildElectricPath();
-    const d = pointsToPath(points);
-    const duration = (Math.random() * 1 + 1.8).toFixed(2);
+  function createBranch(points) {
+    if (points.length < 3) return null;
 
-    const soft = createPath(d, "energy-path soft", duration);
-    const main = createPath(d, "energy-path", duration);
+    const startIndex = randInt(1, points.length - 2);
+    const start = points[startIndex];
+    const horizontal = chance(0.5);
+    const len = randInt(1, 3) * GRID;
+    const dir = chance(0.5) ? 1 : -1;
 
-    energyPaths.appendChild(soft);
-    energyPaths.appendChild(main);
+    const p2 = horizontal
+      ? { x: clamp(start.x + len * dir, 0, window.innerWidth), y: start.y }
+      : { x: start.x, y: clamp(start.y + len * dir, 0, window.innerHeight) };
+
+    const p3 = chance(0.55)
+      ? horizontal
+        ? { x: p2.x, y: clamp(p2.y + GRID * (chance(0.5) ? 1 : -1), 0, window.innerHeight) }
+        : { x: clamp(p2.x + GRID * (chance(0.5) ? 1 : -1), 0, window.innerWidth), y: p2.y }
+      : null;
+
+    const branchPoints = p3 ? [start, p2, p3] : [start, p2];
+    return pathToD(branchPoints.map(p => ({ x: snap(p.x), y: snap(p.y) })));
+  }
+
+  function spawnElectricArc() {
+    const points = buildMainPath();
+    const d = pathToD(points);
+    const dur = rand(1.2, 2.1).toFixed(2);
+
+    const wrapper = createSvgElement("g");
+    wrapper.style.setProperty("--dur", `${dur}s`);
+
+    const halo = createSvgElement("path", {
+      d,
+      class: "energy-main"
+    });
+
+    const core = createSvgElement("path", {
+      d,
+      class: "energy-core"
+    });
+
+    wrapper.appendChild(halo);
+    wrapper.appendChild(core);
+
+    const nodeCount = randInt(2, 5);
+    for (let i = 0; i < nodeCount; i++) {
+      const p = points[randInt(1, points.length - 2)];
+      const node = createSvgElement("circle", {
+        cx: p.x,
+        cy: p.y,
+        r: rand(1.8, 3.2).toFixed(1),
+        class: "energy-node"
+      });
+      node.style.setProperty("--dur", `${rand(0.9, 1.5).toFixed(2)}s`);
+      wrapper.appendChild(node);
+    }
+
+    const branches = randInt(1, MAX_BRANCHES);
+    for (let i = 0; i < branches; i++) {
+      if (!chance(0.75)) continue;
+      const bd = createBranch(points);
+      if (!bd) continue;
+
+      const branch = createSvgElement("path", {
+        d: bd,
+        class: "energy-branch"
+      });
+      branch.style.setProperty("--dur", `${rand(0.8, 1.4).toFixed(2)}s`);
+      wrapper.appendChild(branch);
+    }
+
+    group.appendChild(wrapper);
 
     setTimeout(() => {
-      soft.remove();
-      main.remove();
-    }, duration * 1000 + 400);
+      wrapper.remove();
+    }, (parseFloat(dur) + 0.6) * 1000);
   }
 
-  resizeEnergyLayer();
-  window.addEventListener("resize", resizeEnergyLayer);
+  function loop() {
+    spawnElectricArc();
+    const next = rand(SPAWN_MIN, SPAWN_MAX);
+    setTimeout(loop, next);
+  }
 
-  spawnEnergy();
-  setInterval(spawnEnergy, 1200);
+  resize();
+  window.addEventListener("resize", resize);
+  loop();
+})();
 </script>
 </body>
 </html>
