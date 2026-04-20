@@ -460,5 +460,100 @@
       });
     });
   </script>
+  <script>
+  const energyLayer = document.getElementById("energyLayer");
+  const energyPaths = document.getElementById("energyPaths");
+
+  const GRID_SIZE = 42; // Doit correspondre au background-size de ta grille
+
+  function resizeEnergyLayer() {
+    energyLayer.setAttribute("viewBox", `0 0 ${window.innerWidth} ${window.innerHeight}`);
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function randomGridCoord(max) {
+    const cells = Math.floor(max / GRID_SIZE);
+    return Math.round(Math.random() * cells) * GRID_SIZE;
+  }
+
+  function randomEdgePoint(w, h) {
+    const edge = Math.floor(Math.random() * 4);
+
+    if (edge === 0) return { x: 0, y: randomGridCoord(h) };      // gauche
+    if (edge === 1) return { x: w, y: randomGridCoord(h) };      // droite
+    if (edge === 2) return { x: randomGridCoord(w), y: 0 };      // haut
+    return { x: randomGridCoord(w), y: h };                      // bas
+  }
+
+  function buildElectricPath() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    let current = randomEdgePoint(w, h);
+    const points = [current];
+
+    let horizontal = Math.random() > 0.5;
+    const segments = Math.floor(Math.random() * 4) + 5; // entre 5 et 8 segments
+
+    for (let i = 0; i < segments; i++) {
+      if (horizontal) {
+        let nextX = randomGridCoord(w);
+        if (nextX === current.x) {
+          nextX = clamp(current.x + (Math.random() > 0.5 ? GRID_SIZE * 2 : -GRID_SIZE * 2), 0, w);
+        }
+        current = { x: nextX, y: current.y };
+      } else {
+        let nextY = randomGridCoord(h);
+        if (nextY === current.y) {
+          nextY = clamp(current.y + (Math.random() > 0.5 ? GRID_SIZE * 2 : -GRID_SIZE * 2), 0, h);
+        }
+        current = { x: current.x, y: nextY };
+      }
+
+      points.push(current);
+      horizontal = !horizontal;
+    }
+
+    return points;
+  }
+
+  function pointsToPath(points) {
+    return points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
+  }
+
+  function createPath(d, className, duration) {
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", className);
+    path.style.setProperty("--dur", `${duration}s`);
+    return path;
+  }
+
+  function spawnEnergy() {
+    const points = buildElectricPath();
+    const d = pointsToPath(points);
+    const duration = (Math.random() * 1 + 1.8).toFixed(2);
+
+    const soft = createPath(d, "energy-path soft", duration);
+    const main = createPath(d, "energy-path", duration);
+
+    energyPaths.appendChild(soft);
+    energyPaths.appendChild(main);
+
+    setTimeout(() => {
+      soft.remove();
+      main.remove();
+    }, duration * 1000 + 400);
+  }
+
+  resizeEnergyLayer();
+  window.addEventListener("resize", resizeEnergyLayer);
+
+  spawnEnergy();
+  setInterval(spawnEnergy, 1200);
+</script>
 </body>
 </html>
