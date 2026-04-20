@@ -18,42 +18,93 @@
   height: 100%;
   pointer-events: none;
   z-index: -2;
-  opacity: 0.7;
+  opacity: 0.9;
   mix-blend-mode: screen;
 }
 
-.energy-path {
+.energy-main,
+.energy-core,
+.energy-branch,
+.energy-node {
+  filter: url(#energyGlow);
+}
+
+.energy-main {
   fill: none;
-  stroke: #66d4ff;
-  stroke-width: 2;
+  stroke: rgba(90, 210, 255, 0.28);
+  stroke-width: 6;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: url(#energyGlow);
-  stroke-dasharray: 10 18;
-  animation: energyTravel var(--dur, 2.4s) linear forwards;
+  opacity: 0;
+  animation: energyFlash var(--dur, 1.6s) ease-out forwards;
 }
 
-.energy-path.soft {
-  stroke: #4de2c5;
-  stroke-width: 4;
-  opacity: 0.28;
+.energy-core {
+  fill: none;
+  stroke: #9be7ff;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 8 14;
+  opacity: 0;
+  animation:
+    energyFlash var(--dur, 1.6s) ease-out forwards,
+    energyDash var(--dur, 1.6s) linear forwards,
+    energyFlicker 0.12s steps(2) infinite;
 }
 
-@keyframes energyTravel {
-  0% {
-    stroke-dashoffset: 260;
-    opacity: 0;
-  }
-  12% {
-    opacity: 0.95;
-  }
-  80% {
-    opacity: 0.75;
-  }
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-  }
+.energy-branch {
+  fill: none;
+  stroke: rgba(125, 255, 230, 0.85);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  animation:
+    energyFlashBranch var(--dur, 1.2s) ease-out forwards,
+    energyFlicker 0.14s steps(2) infinite;
+}
+
+.energy-node {
+  fill: rgba(160, 245, 255, 0.95);
+  opacity: 0;
+  animation:
+    nodePulse var(--dur, 1.4s) ease-out forwards,
+    energyFlicker 0.16s steps(2) infinite;
+}
+
+@keyframes energyFlash {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  18%  { opacity: 0.5; }
+  28%  { opacity: 0.95; }
+  60%  { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
+@keyframes energyFlashBranch {
+  0%   { opacity: 0; }
+  15%  { opacity: 0.9; }
+  55%  { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+
+@keyframes energyDash {
+  from { stroke-dashoffset: 180; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes energyFlicker {
+  0%   { filter: url(#energyGlow) brightness(1); }
+  50%  { filter: url(#energyGlow) brightness(1.2); }
+  100% { filter: url(#energyGlow) brightness(0.92); }
+}
+
+@keyframes nodePulse {
+  0%   { opacity: 0; transform: scale(0.2); }
+  18%  { opacity: 1; transform: scale(1.25); }
+  45%  { opacity: 0.9; transform: scale(0.9); }
+  100% { opacity: 0; transform: scale(1.8); }
 }
 
 header,
