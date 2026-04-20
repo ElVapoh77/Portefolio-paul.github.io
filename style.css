@@ -331,3 +331,43 @@ code {
   width: 180px;
   max-width: 180px;
 }
+.e5-meta-cell {
+  min-width: 520px;
+  width: 520px;
+  max-width: 520px;
+  padding: 1rem 1rem 0.9rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.e5-meta-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.e5-meta-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.e5-meta-subtitle {
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.e5-meta-line {
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-align: left;
+  white-space: normal;
+}
+
+.e5-meta-spacer {
+  background: rgba(255, 255, 255, 0.02);
+}
